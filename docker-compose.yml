@@ -1,0 +1,62 @@
+version: '3.9'
+
+services:
+  app-be:
+    build: ./applicant-service
+    command: sh -c "sleep 10s && npx prisma migrate dev --name init && npm install && npm run build && npm run start"
+    container_name: applicant-service
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./applicant-service:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - DATABASE_URL=mysql://krom_user:Kr0m2025@db:3306/krom
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mysql-network
+
+  app-fe:
+    build: ./applicant-fe
+    command: sh -c "npm install"
+    container_name: applicant-fe
+    ports:
+      - "3000:80"
+    volumes:
+      - ./applicant-fe:/app
+      - /app/node_modules
+
+  db:
+    image: mysql:8
+    container_name: mysql-container
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Admin#2025
+      MYSQL_DATABASE: krom
+      MYSQL_USER: krom_user
+      MYSQL_PASSWORD: Kr0m2025
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./applicant-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mysql-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "krom_user", "-pKr0m2025" ]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
+
+volumes:
+  mysql-data:
+
+
+networks:
+  mysql-network:
+    driver: bridge
